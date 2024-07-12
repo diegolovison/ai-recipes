@@ -1,0 +1,2 @@
+DONT DO THE FOLLOWING IN PRODUCTION
+Execute `doit.sh`
