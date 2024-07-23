@@ -165,15 +165,6 @@ oc new-project $DSPA_PROJECT_NAME
 oc label namespace $DSPA_PROJECT_NAME opendatahub.io/dashboard=true
 
 kubectl create configmap -n $DSPA_PROJECT_NAME minio-ca-bundle --from-file=/tmp/minio-ca-bundle.crt
-cat <<EOF | oc apply -n dspa-example -f -
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: custom-ca-bundle
-data:
-  ca-bundle.crt: |
-    
-EOF
 
 # create minio bucket
 MINIO_HOST=$(oc get route minio-secure -n minio -o jsonpath='{.spec.host}')
