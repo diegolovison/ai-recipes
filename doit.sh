@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+set -x
 
 MINIO_PROJECT_NAME=minio
 DSPA_PROJECT_NAME=dspa-example
@@ -167,11 +169,11 @@ oc label namespace $DSPA_PROJECT_NAME opendatahub.io/dashboard=true
 kubectl create configmap -n $DSPA_PROJECT_NAME minio-ca-bundle --from-file=/tmp/minio-ca-bundle.crt
 
 # create minio bucket
-MINIO_HOST=$(oc get route minio-secure -n minio -o jsonpath='{.spec.host}')
+MINIO_HOST=$(oc get route minio-secure -n $MINIO_PROJECT_NAME -o jsonpath='{.spec.host}')
 MINIO_BUCKET=test
 (rm -f /tmp/mc && cd /tmp && curl -O https://dl.min.io/client/mc/release/linux-amd64/mc)
 chmod +x /tmp/mc
-/tmp/mc --insecure alias set myminio https://$MINIO_HOST $MINIO_USER $MINIO_PWD
+/tmp/mc --insecure alias set myminio "https://$MINIO_HOST" $MINIO_USER $MINIO_PWD
 /tmp/mc --insecure mb myminio/$MINIO_BUCKET
 
 # duplicated resource
