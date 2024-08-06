@@ -2,10 +2,13 @@
 set -e
 set -x
 
-MINIO_PROJECT_NAME=minio
-DSPA_PROJECT_NAME=dspa-example
-MINIO_USER=accesskey
-MINIO_PWD=secretkey
+# change log
+# AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY because of Elyra
+
+MINIO_PROJECT_NAME=minio2
+DSPA_PROJECT_NAME=dspa-example2
+MINIO_USER=miniouser
+MINIO_PWD=miniopwd
 
 oc new-project $MINIO_PROJECT_NAME
 cat <<EOF | oc apply -n $MINIO_PROJECT_NAME -f -
@@ -58,12 +61,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: minio
-                  key: accesskey
+                  key: AWS_ACCESS_KEY_ID
             - name: MINIO_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: minio
-                  key: secretkey
+                  key: AWS_SECRET_ACCESS_KEY
           ports:
             - containerPort: 9000
               protocol: TCP
@@ -92,8 +95,8 @@ apiVersion: v1
 metadata:
   name: minio
 stringData:
-  accesskey: ${MINIO_USER}
-  secretkey: ${MINIO_PWD}
+  AWS_ACCESS_KEY_ID: ${MINIO_USER}
+  AWS_SECRET_ACCESS_KEY: ${MINIO_PWD}
 type: Opaque
 ---
 kind: Route
@@ -183,8 +186,8 @@ apiVersion: v1
 metadata:
   name: minio-duplicated
 stringData:
-  accesskey: ${MINIO_USER}
-  secretkey: ${MINIO_PWD}
+  AWS_ACCESS_KEY_ID: ${MINIO_USER}
+  AWS_SECRET_ACCESS_KEY: ${MINIO_PWD}
 type: Opaque
 EOF
 
@@ -207,8 +210,8 @@ spec:
       port: ''
       region: na
       s3CredentialsSecret:
-        accessKey: accesskey
-        secretKey: secretkey
+        accessKey: AWS_ACCESS_KEY_ID
+        secretKey: AWS_SECRET_ACCESS_KEY
         secretName: minio-duplicated  
       scheme: https
 EOF
