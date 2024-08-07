@@ -5,8 +5,8 @@ set -x
 # change log
 # AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY because of Elyra
 
-MINIO_PROJECT_NAME=minio-https
-DSPA_PROJECT_NAME=dspa-example1
+MINIO_PROJECT_NAME=minio-http
+DSPA_PROJECT_NAME=dspa-example2
 MINIO_USER=miniouser
 MINIO_PWD=miniopwd
 
@@ -42,23 +42,6 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: minio
-        - name: cabundle
-          configMap:
-            # Automatically created in every ocp namespace
-            name: openshift-service-ca.crt
-            items:
-              - key: service-ca.crt
-                path: public.crt
-            defaultMode: 420
-        - name: minio-certs
-          secret:
-            secretName: minio-certs
-            items:
-              - key: tls.crt
-                path: public.crt
-              - key: tls.key
-                path: private.key
-            defaultMode: 420
       containers:
         - resources:
             limits:
@@ -87,16 +70,10 @@ spec:
             - name: data
               mountPath: /data
               subPath: minio
-            - name: minio-certs
-              mountPath: /.minio/certs
-            - name: cabundle
-              mountPath: /.minio/certs/CAs
           image: 'quay.io/minio/minio:RELEASE.2023-10-16T04-13-43Z'
           args:
             - server
             - /data
-            - '--certs-dir'
-            - /.minio/certs
             - --console-address
             - ":9001"
   strategy:
@@ -115,11 +92,9 @@ kind: Service
 apiVersion: v1
 metadata:
   name: minio
-  annotations:
-    service.beta.openshift.io/serving-cert-secret-name: minio-certs
 spec:
   ports:
-    - name: https
+    - name: http
       protocol: TCP
       port: 9000
       targetPort: 9000
@@ -141,10 +116,6 @@ spec:
     weight: 100
   port:
     targetPort: console
-  tls:
-    termination: reencrypt
-    insecureEdgeTerminationPolicy: Redirect
-  wildcardPolicy: None
 ---
 kind: Route
 apiVersion: route.openshift.io/v1
@@ -156,10 +127,7 @@ spec:
     name: minio
     weight: 100
   port:
-    targetPort: https
-  tls:
-    termination: reencrypt
-    insecureEdgeTerminationPolicy: Redirect
+    targetPort: http
 EOF
 
 # wait
@@ -173,16 +141,13 @@ if ! test -f /tmp/mc; then
   (cd /tmp && curl -O https://dl.min.io/client/mc/release/linux-amd64/mc)
   chmod +x /tmp/mc
 fi
-/tmp/mc --insecure alias set myminio "https://$MINIO_HOST" $MINIO_USER $MINIO_PWD
+/tmp/mc --insecure alias set myminio "http://$MINIO_HOST" $MINIO_USER $MINIO_PWD
 /tmp/mc --insecure mb myminio/$MINIO_BUCKET
+MINIO_SERVICE=$(oc get svc minio -o go-template --template='{{.metadata.name}}.{{.metadata.namespace}}.svc.cluster.local' -n $MINIO_PROJECT_NAME)
 
 # dspa
 oc new-project $DSPA_PROJECT_NAME
 oc label namespace $DSPA_PROJECT_NAME opendatahub.io/dashboard=true
-
-# cert config map
-oc -n $MINIO_PROJECT_NAME get configmap kube-root-ca.crt -o yaml | yq '.data."ca.crt"'  > /tmp/minio-ca-bundle.crt
-kubectl create configmap -n $DSPA_PROJECT_NAME minio-ca-bundle --from-file=/tmp/minio-ca-bundle.crt
 
 # secret to access minio
 cat <<EOF | oc apply -n $DSPA_PROJECT_NAME -f -
@@ -203,21 +168,17 @@ metadata:
   name: dspa
 spec:
   dspVersion: v2
-  apiServer:
-    cABundle:
-      configMapName: minio-ca-bundle
-      configMapKey: minio-ca-bundle.crt
   objectStorage:
     externalStorage:
       basePath: ''
       bucket: ${MINIO_BUCKET}
-      host: ${MINIO_HOST}
-      port: ''
+      host: ${MINIO_SERVICE}
+      port: '9000'
       region: na
       s3CredentialsSecret:
         accessKey: AWS_ACCESS_KEY_ID
         secretKey: AWS_SECRET_ACCESS_KEY
-        secretName: minio-duplicated  
-      scheme: https
+        secretName: minio-duplicated
+      scheme: http
+      secure: false
 EOF
-
