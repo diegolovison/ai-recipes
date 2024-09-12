@@ -173,7 +173,7 @@ if ! test -f /tmp/mc; then
   (cd /tmp && curl -O https://dl.min.io/client/mc/release/linux-amd64/mc)
   chmod +x /tmp/mc
 fi
-/tmp/mc --insecure alias set myminio "https://$MINIO_HOST" $MINIO_USER $MINIO_PWD
+for i in {1..15}; do /tmp/mc --insecure alias set myminio "https://$MINIO_HOST" $MINIO_USER $MINIO_PWD && break || sleep 2; done
 /tmp/mc --insecure mb myminio/$MINIO_BUCKET
 
 # dspa
