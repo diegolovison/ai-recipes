@@ -187,12 +187,15 @@ sleep 5
 # create minio bucket
 MINIO_HOST=$(oc get route minio-endpoint -n $MINIO_PROJECT_NAME -o jsonpath='{.spec.host}')
 MINIO_BUCKET=test
-if ! test -f /tmp/mc; then
-  (cd /tmp && curl -O https://dl.min.io/client/mc/release/linux-amd64/mc)
-  chmod +x /tmp/mc
+if ! which mc >/dev/null 2>&1; then
+  if ! test -f /tmp/mc; then
+    (cd /tmp && curl -O https://dl.min.io/client/mc/release/linux-amd64/mc)
+    chmod +x /tmp/mc
+  fi
+  alias mc=/tmp/mc
 fi
-for i in {1..15}; do /tmp/mc --insecure alias set myminio "https://$MINIO_HOST" $MINIO_USER $MINIO_PWD && break || sleep 2; done
-/tmp/mc --insecure mb myminio/$MINIO_BUCKET
+for i in {1..15}; do mc --insecure alias set myminio "https://$MINIO_HOST" $MINIO_USER $MINIO_PWD && break || sleep 2; done
+mc --insecure mb myminio/$MINIO_BUCKET
 
 # dspa
 oc new-project $DSPA_PROJECT_NAME
