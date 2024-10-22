@@ -18,6 +18,16 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
+if oc get project "$DSPA_PROJECT_NAME" >/dev/null 2>&1; then
+    echo "Project '$DSPA_PROJECT_NAME' already exists."
+    exit 1
+fi
+
+if oc get project "$MINIO_PROJECT_NAME" >/dev/null 2>&1; then
+    echo "Project '$MINIO_PROJECT_NAME' already exists."
+    exit 1
+fi
+
 oc new-project $MINIO_PROJECT_NAME
 cat <<EOF | oc apply -n $MINIO_PROJECT_NAME -f -
 kind: PersistentVolumeClaim
