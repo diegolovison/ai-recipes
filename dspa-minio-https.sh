@@ -10,6 +10,14 @@ DSPA_PROJECT_NAME=dspa-example1
 MINIO_USER=miniouser
 MINIO_PWD=miniopwd
 
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --dspa-project-name) DSPA_PROJECT_NAME="$2"; shift ;;
+        *) echo "Unknown parameter passed: $1"; exit 1 ;;
+    esac
+    shift
+done
+
 oc new-project $MINIO_PROJECT_NAME
 cat <<EOF | oc apply -n $MINIO_PROJECT_NAME -f -
 kind: PersistentVolumeClaim
