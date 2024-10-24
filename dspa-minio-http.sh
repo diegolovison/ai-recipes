@@ -10,6 +10,24 @@ DSPA_PROJECT_NAME=dspa-example2
 MINIO_USER=miniouser
 MINIO_PWD=miniopwd
 
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --dspa-project-name) DSPA_PROJECT_NAME="$2"; shift ;;
+        *) echo "Unknown parameter passed: $1"; exit 1 ;;
+    esac
+    shift
+done
+
+if oc get project "$DSPA_PROJECT_NAME" >/dev/null 2>&1; then
+    echo "Project '$DSPA_PROJECT_NAME' already exists."
+    exit 1
+fi
+
+if oc get project "$MINIO_PROJECT_NAME" >/dev/null 2>&1; then
+    echo "Project '$MINIO_PROJECT_NAME' already exists."
+    exit 1
+fi
+
 oc new-project $MINIO_PROJECT_NAME
 cat <<EOF | oc apply -n $MINIO_PROJECT_NAME -f -
 kind: PersistentVolumeClaim
@@ -137,12 +155,15 @@ sleep 5
 # create minio bucket
 MINIO_HOST=$(oc get route minio-endpoint -n $MINIO_PROJECT_NAME -o jsonpath='{.spec.host}')
 MINIO_BUCKET=test
-if ! test -f /tmp/mc; then
-  (cd /tmp && curl -O https://dl.min.io/client/mc/release/linux-amd64/mc)
-  chmod +x /tmp/mc
+if ! which mc >/dev/null 2>&1; then
+  if ! test -f /tmp/mc; then
+    (cd /tmp && curl -O https://dl.min.io/client/mc/release/linux-amd64/mc)
+    chmod +x /tmp/mc
+  fi
+  alias mc=/tmp/mc
 fi
-/tmp/mc --insecure alias set myminio "http://$MINIO_HOST" $MINIO_USER $MINIO_PWD
-/tmp/mc --insecure mb myminio/$MINIO_BUCKET
+mc --insecure alias set myminio "http://$MINIO_HOST" $MINIO_USER $MINIO_PWD
+mc --insecure mb myminio/$MINIO_BUCKET
 MINIO_SERVICE=$(oc get svc minio -o go-template --template='{{.metadata.name}}.{{.metadata.namespace}}.svc.cluster.local' -n $MINIO_PROJECT_NAME)
 
 # dspa
